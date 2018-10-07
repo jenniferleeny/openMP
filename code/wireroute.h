@@ -8,12 +8,19 @@
 
 #include <omp.h>
 
+typedef int cost_t;
 typedef struct
 {
-  /* Define the data structure for wire here */
+    int x1;
+    int x2;
+    int y1;
+    int y2;
+    int bend_x1;
+    int bend_x2;
+    int bend_y1;
+    int bend_y2;
+    cost_t cost;
 } wire_t;
-
-typedef int cost_t;
 
 const char *get_option_string(const char *option_name, const char *default_value);
 int get_option_int(const char *option_name, int default_value);
