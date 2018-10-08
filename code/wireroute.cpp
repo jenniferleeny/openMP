@@ -77,34 +77,49 @@ cost_t matrix_cost(cost_t *matrix, int num) {
     return aggregate_cost;
 }
 
-cost_t *change_wire_route_helper(cost_t* matrix, int x1, int y1, int x2, int y2) {
+cost_t *change_wire_route_helper(cost_t* matrix, int x1, int y1, int x2, int y2,
+        int dim_x, int dim_y, int increment) {
     if (y1 == y2) {
         for (int i = std::min(x1, x2); i < std::max(x1, x2); i++) {
-            matrix[ y1 * dim_x + i] -= 1;
+            matrix[ y1 * dim_x + i] += increment;
         }
     } else {
         for (int i = std::min(y1, y2); i < std::max(y1, y2); i++) {
-            matrix[i * dim_x + x1] -= 1;
+            matrix[i * dim_x + x1] += increment;
         }
-    }
-}
-
-cost_t *remove_wire_route(cost_t *matrix, wire_t wire) {
-    // undo original wire routing
-    // get rid of second line in route
-    matrix = change_wire_route_helper(matrix, wire.x1, wire.y1, wire.bend_x1, wire.bend_y1);
-    int x1, y1, x2, y2;
-    if (wire.bend_y2 >= 0 && wire.bend_x2 >= 0) {
-        matrix = change_wire_route_helper(matrix, wire.bend_x1, wire.bend_y1,
-                        wire.bend_x2, wire.bend_y2);
-        matrix = change_wire_route_helper(matrix, wire.bend_x2, wire.bend_y2,
-                        wire.x2, wire.y2);
-    } else {
-        matrix = change_wire_route_helper(matrix, wire.bend_x1, wire.bend_y1,
-                        wire.x2, wire.y2);
     }
     return matrix;
 }
+
+cost_t *change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y, 
+        int increment) {
+    // undo original wire routing
+    // get rid of second line in route
+    matrix = change_wire_route_helper(matrix, wire.x1, wire.y1, wire.bend_x1, 
+            wire.bend_y1, dim_x, dim_y, increment);
+    if (wire.bend_y2 >= 0 && wire.bend_x2 >= 0) {
+        matrix = change_wire_route_helper(matrix, wire.bend_x1, wire.bend_y1,
+                        wire.bend_x2, wire.bend_y2, dim_x, dim_y, increment);
+        matrix = change_wire_route_helper(matrix, wire.bend_x2, wire.bend_y2,
+                        wire.x2, wire.y2, dim_x, dim_y, increment);
+    } else {
+        matrix = change_wire_route_helper(matrix, wire.bend_x1, wire.bend_y1,
+                        wire.x2, wire.y2, dim_x, dim_y, increment);
+    }
+    return matrix;
+}
+
+/*cost_t *add_wire_route(cost_t *matrix, wire_t wire, int bendx1, int bendy1, 
+            int bendx2, int bendy2) {
+    matrix = add_wire_route_helper(matrix, wire.x1, wire.y1, bendx1, bendy1);
+    if (wire.bend_y2 >= 0 && wire.bend_x2 >= 0) {
+        matrix = add_wire_route_helper(matrix, bendx1, bendy1, bendx2, bendy2);
+        matrix = add_wire_route_helper(matrix, bendx1, bendy1, bendx2, bendy2);
+    } else {
+        matrix = add_wire_route_helper(matrix, bendx1, bendy1, wire.x2, wire.y2);
+    }
+    return matrix;
+}*/
 
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and adds the 
 // wire route to matrix
@@ -122,29 +137,28 @@ wire_t find_min_path(int length, int dim_x, int dim_y, wire_t wire, cost_t *matr
         x2 = wire.x1;
         y2 = wire.y1;
     }
-    // check if wire has been placed on grid
     cost_t curr_cost = 0;
-    int offset = dim_x * std::min(y1, y2);
-    // int index = dim_x * y1 + x1;
+    // if wire has been placed on grid or not
     if (wire.cost == -1) { // if wire.cost == -1 => wire has not been placed on grid
-        for (int i = x1; i <= x2; i++) {
-            matrix[offset + i] += 1;
+        for (int x = x1; x <= x2; x++) {
+            curr_cost += 1 + matrix[std::min(y1, y2) * dim_x + x];
         }
-        for (int i = std::min(y1, y2) + 1; i <= std::max(y1, y2); i++) {
-            if (y1 <= y2) {
-                matrix[i * dim_x + x2] += 1;
-                curr_cost += matrix[i * dim_x + x2];
-            } else {
-                matrix[i * dim_x + x1] += 1;
-                curr_cost += matrix[i * dim_x + x1];
+        if (y1 <= y2) {
+            for (int i = y1+1; i <= y2; i++) {
+                curr_cost += 1 + matrix[i * dim_x + x2];
             }
+        } else {
+            for (int i = y2+1; i <= y1; i++) {
+                curr_cost += 1 + matrix[i * dim_x + x1];
+            } 
         }
         wire.cost = curr_cost;
+        printf("wire cost: %d\n", wire.cost);
         wire.bend_x1 = x2;
         wire.bend_y1 = std::min(y1, y2);
+    } else { // otws remove current route from matrix
+        matrix = change_wire_route(matrix, wire, dim_x, dim_y, -1);
     }
-    matrix = remove_wire_route(matrix, wire);
-    print(matrix, dim_y, dim_x);    
     // MAIN IDEA: horizontal keeps track of the path cost of a wire route that has a 
     // bend at row x
     // vertical keeps track of the path cost of a wire route that has a bend at column y
@@ -154,31 +168,30 @@ wire_t find_min_path(int length, int dim_x, int dim_y, wire_t wire, cost_t *matr
     for (int i = 0; i < dim_y; i++) {
         cost_t row_cost = 0;
         for (int j = x1; j <= x2; j++) {
-            row_cost += matrix[i*dim_x + j];
+            row_cost += 1 + matrix[i*dim_x + j];
         }
         horizontal[i] = row_cost;
         printf("%d\n", row_cost);
     }
-    // print(horizontal, 1, dim_y);
     for (int i = 0; i< dim_y; i++) {
         if (i < std::min(y1, y2)) {
             for (int j = i+1; j <= std::max(y1, y2); j++) {
-                horizontal[i] += (j <= y1)* matrix[dim_x * j + x1];
-                horizontal[i] += (j <= y2)* matrix[dim_x * j + x2];
+                horizontal[i] += (j <= y1)* (1 + matrix[dim_x * j + x1]);
+                horizontal[i] += (j <= y2)* (1 + matrix[dim_x * j + x2]);
             }// check for double counting
         } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
             for (int j = std::min(y1, y2); j < i; j++) {
-                horizontal[i] += (y1 < y2) * matrix[dim_x * j + x1];
-                horizontal[i] += (y2 < y1) * matrix[dim_x * j + x2];
+                horizontal[i] += (y1 < y2) * (1 + matrix[dim_x * j + x1]);
+                horizontal[i] += (y2 < y1) * (1 + matrix[dim_x * j + x2]);
             }
             for (int j = i+1; j <= std::max(y1, y2); j++) {
-                horizontal[i] += (y1 > y2) * matrix[dim_x * j + x1];
-                horizontal[i] += (y1 < y2) * matrix[dim_x * j + x2];
+                horizontal[i] += (y1 > y2) * (1 + matrix[dim_x * j + x1]);
+                horizontal[i] += (y1 < y2) * (1 + matrix[dim_x * j + x2]);
             }
         } else if (i > std::max(y1, y2)) {
             for (int j = std::min(y1, y2); j < i; j++) {
-                horizontal[i] += (j >= y1)* matrix[dim_x * j + x1];
-                horizontal[i] += (j >= y2)* matrix[dim_x * j + x2];
+                horizontal[i] += (j >= y1)* (1 + matrix[dim_x * j + x1]);
+                horizontal[i] += (j >= y2)* (1 + matrix[dim_x * j + x2]);
             }
         }
     }
@@ -194,29 +207,31 @@ wire_t find_min_path(int length, int dim_x, int dim_y, wire_t wire, cost_t *matr
     for (int i = 0; i < dim_x; i++) {
         if (i < std::min(x1, x2)) {
             for (int j = i+1; j <= std::max(x1, x2); j++) {
-                horizontal[i] += (j <= x1)* matrix[dim_x * y1 + j];
-                horizontal[i] += (j <= x2)* matrix[dim_x * y2 + j];
+                horizontal[i] += (j <= x1)* (1 + matrix[dim_x * y1 + j]);
+                horizontal[i] += (j <= x2)* (1 + matrix[dim_x * y2 + j]);
             }// check for double counting
         } else if (i >= std::min(x1, x2) && i <= std::max(x1, x2)) {
             for (int j = std::min(x1, x2); j < i; j++) {
-                horizontal[i] += (y1 < y2) * matrix[dim_x * y1 + j];
-                horizontal[i] += (y2 < y1) * matrix[dim_x * y2 + j];
+                horizontal[i] += (y1 < y2) * (1 + matrix[dim_x * y1 + j]);
+                horizontal[i] += (y2 < y1) * (1 + matrix[dim_x * y2 + j]);
             }
             for (int j = i+1; j <= std::max(x1, x2); j++) {
-                horizontal[i] += (y1 > y2) * matrix[dim_x * y1 + j];
-                horizontal[i] += (y1 < y2) * matrix[dim_x * y2 + j];
+                horizontal[i] += (y1 > y2) * (1 + matrix[dim_x * y1 + j]);
+                horizontal[i] += (y1 < y2) * (1 + matrix[dim_x * y2 + j]);
             }
         } else if (i > std::max(x1, x2)) {
             for (int j = std::min(y1, y2); j < i; j++) {
-                horizontal[i] += (j >= x1)* matrix[dim_x * y1 + j];
-                horizontal[i] += (j >= x2)* matrix[dim_x * y2 + j];
+                horizontal[i] += (j >= x1)* (1 + matrix[dim_x * y1 + j]);
+                horizontal[i] += (j >= x2)* (1 + matrix[dim_x * y2 + j]);
             }
         }
     }
-    // print(horizontal, 1, dim_y);
     // print(vertical, 1, dim_x);
     int min_val = wire.cost;
-    int new_bendx1, new_bendy1, new_bendx2, new_bendy2 = -1;
+    int new_bendx1 = -1;
+    int new_bendy1 = -1;
+    int new_bendx2 = -1;
+    int new_bendy2 = -1;
     // keep track of bends
     for (int i = 0; i <= dim_y; i++) {
         if (min_val > horizontal[i]) {
@@ -232,20 +247,22 @@ wire_t find_min_path(int length, int dim_x, int dim_y, wire_t wire, cost_t *matr
     for (int i = 0; i < dim_x; i++) {
         if (min_val > vertical[i]) {
             min_val = vertical[i];
-            new_bend_x1 = i;
-            new_bend_y1 = wire.y1;
+            new_bendx1 = i;
+            new_bendy1 = wire.y1;
             if (i != wire.x1 && i != wire.x2) {
-                new_bend_x2 = i;
-                new_bend_y2 = wire.y2;
+                new_bendx2 = i;
+                new_bendy2 = wire.y2;
             }
         }
     }
     if ( wire.cost > min_val) {
-        
-        matrix = change_wire_route(matrix, wire, new_bendx1, new_bendy1, 
-            new_bendx2, new_bendy2);
+        wire.bend_x1 = new_bendx1;
+        wire.bend_y1 = new_bendy1;
+        wire.bend_x2 = new_bendx2;
+        wire.bend_y2 = new_bendy2;
+        wire.cost = min_val;
+        matrix = change_wire_route(matrix, wire, dim_x, dim_y, 1);
     }
-    wire.cost = min_val;
     free(horizontal);
     free(vertical);
     return wire;
