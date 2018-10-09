@@ -500,10 +500,11 @@ int main(int argc, const char *argv[])
         wire_t wire = wires[i];
         fprintf(output_routes_file, "%d %d ", wire.x1, wire.y1);
         if (wire.bend_x1 >= 0 && wire.bend_y1 >= 0 &&
-            wire.bend_x1 != wire.x1 && wire.bend_x2 != wire.x2)
+            !(wire.bend_x1 == wire.x1 && wire.bend_y1 == wire.y1))
             fprintf(output_routes_file, "%d %d ", wire.bend_x1, wire.bend_y1);
-        fprintf(output_routes_file, "%d %d ", wire.x2, wire.y2);
-        fprintf(output_routes_file, "\n");
+        if (wire.bend_x2 >= 0 && wire.bend_y2 >= 0)
+            fprintf(output_routes_file, "%d %d ", wire.bend_x2, wire.bend_y2);
+        fprintf(output_routes_file, "%d %d\n", wire.x2, wire.y2);
     }  
     // WRITE WIRES TO FILE HERE
 
