@@ -152,6 +152,36 @@ void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y,
     matrix[wire.y2 * dim_x + wire.x2] += increment; 
 }
 
+cost_t populate_horizontal(cost_t *matrix, int i, int x1, int, y1, int x2, int y2,
+                        int dim_x, int dim_y) {// i indicates ith horizontal segment
+    cost_t row_cost = 0;
+    for (int j = x1; j <= x2; j++) {
+        row_cost += 1 + matrix[i*dim_x + j];
+    }
+    // horizontal[i - y_min] = row_cost;
+    if (i < std::min(y1, y2)) {
+        for (int j = i+1; j <= std::max(y1, y2); j++) {
+            row_cost += (j <= y1) * (1 + matrix[dim_x * j + x1]);
+            row_cost += (j <= y2) * (1 + matrix[dim_x * j + x2]);
+        }// check for double counting
+    } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
+        for (int j = std::min(y1, y2); j < i; j++) {
+            row_cost += (y1 < y2) * (1 + matrix[dim_x * j + x1]);
+            row_cost += (y2 < y1) * (1 + matrix[dim_x * j + x2]);
+        }
+        for (int j = i+1; j <= std::max(y1, y2); j++) {
+            row_cost += (y1 > y2) * (1 + matrix[dim_x * j + x1]);
+            row_cost += (y1 < y2) * (1 + matrix[dim_x * j + x2]);
+        }
+    } else if (i > std::max(y1, y2)) {
+        for (int j = std::min(y1, y2); j < i; j++) {
+            row_cost += (j >= y1)* (1 + matrix[dim_x * j + x1]);
+            row_cost += (j >= y2)* (1 + matrix[dim_x * j + x2]);
+        }
+    }
+    return row_cost;
+}
+
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and adds the 
 // wire route to matrix
 wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
@@ -204,13 +234,13 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
     int *vertical = (cost_t *)calloc(x_max-x_min+1, sizeof(cost_t));
     // HORIZONTAL
     for (int i = y_min; i <= y_max; i++) {
-        cost_t row_cost = 0;
+        horizontal[i - y_min] = populate_horizontal(matrix, i, x1, y1, 
+                                                    x2, y2, dim_x, dim_y);
+        /*cost_t row_cost = 0;
         for (int j = x1; j <= x2; j++) {
             row_cost += 1 + matrix[i*dim_x + j];
         }
         horizontal[i - y_min] = row_cost;
-    }
-    for (int i = y_min; i <= y_max; i++) {
         if (i < std::min(y1, y2)) {
             for (int j = i+1; j <= std::max(y1, y2); j++) {
                 horizontal[i - y_min] += (j <= y1) * (1 + matrix[dim_x * j + x1]);
@@ -230,22 +260,19 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
                 horizontal[i- y_min] += (j >= y1)* (1 + matrix[dim_x * j + x1]);
                 horizontal[i- y_min] += (j >= y2)* (1 + matrix[dim_x * j + x2]);
             }
-        }
+        }*/
     }
     printf("horizontal\n");
     print(horizontal, 1, y_max - y_min+1);
     
-    // checking vertical
+    //VERTICAL
     for (int i = x_min; i <= x_max; i++) {
         cost_t row_cost = 0;
         for (int j = std::min(y1, y2); j <= std::max(y1, y2); j++) {
             row_cost += 1+matrix[j*dim_x + i];
         }
         vertical[i - x_min] = row_cost;
-    }
-    printf("vertical 0\n");
-    print(vertical, 1, x_max - x_min + 1);
-    for (int i = x_min; i <= x_max; i++) {
+        
         if (i < x1) {
             for (int j = i+1; j <= x2; j++) {
                 vertical[i - x_min] += (j <= x1)* (1 + matrix[dim_x * y1 + j]);
