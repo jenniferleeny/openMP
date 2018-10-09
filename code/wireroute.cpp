@@ -82,7 +82,6 @@ cost_t find_max_overlap_h(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
     for (int j = x1; j <= x2; j++) {
         max_cost = std::max(max_cost, 1 + matrix[i*dim_x + j]);
     }
-    // horizontal[i - y_min] = row_cost;
     if (i < std::min(y1, y2)) {
         for (int j = i+1; j <= std::max(y1, y2); j++) {
             max_cost = std::max(max_cost, (j <= y1) * (1+matrix[dim_x*j+x1]));
@@ -90,11 +89,11 @@ cost_t find_max_overlap_h(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
         }// check for double counting
     } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
-            max_cost = std::max(max_cost, (y1 < y2) * (1+matrix[dim_x*j+x1]));
+            max_cost = std::max(max_cost, (y1 <= y2) * (1+matrix[dim_x*j+x1]));
             max_cost = std::max(max_cost, (y2 < y1) * (1+matrix[dim_x*j+x2]));
         }
         for (int j = i+1; j <= std::max(y1, y2); j++) {
-            max_cost = std::max(max_cost, (y1 > y2) * (1+matrix[dim_x*j+x1]));
+            max_cost = std::max(max_cost, (y1 >= y2) * (1+matrix[dim_x*j+x1]));
             max_cost = std::max(max_cost, (y1 < y2) * (1+matrix[dim_x*j+x2]));
         }
     } else if (i > std::max(y1, y2)) {
@@ -119,11 +118,11 @@ cost_t find_max_overlap_v(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
         }// check for double counting
     } else if (i >= x1 && i <= x2) {
         for (int j = x1; j < i; j++) {
-            max_cost = std::max(max_cost, (y1 < y2) * (1 + matrix[dim_x * y1 + j]));
+            max_cost = std::max(max_cost, (y1 <= y2) * (1 + matrix[dim_x * y1 + j]));
             max_cost = std::max(max_cost, (y2 < y1) * (1 + matrix[dim_x * y2 + j]));
         }
         for (int j = i+1; j <= x2; j++) {
-            max_cost = std::max(max_cost, (y1 > y2) * (1 + matrix[dim_x * y1 + j]));
+            max_cost = std::max(max_cost, (y1 >= y2) * (1 + matrix[dim_x * y1 + j]));
             max_cost = std::max(max_cost, (y1 < y2) * (1 + matrix[dim_x * y2 + j]));
         }
     } else if (i > x2) {
@@ -169,7 +168,8 @@ cost_t find_wire_cost(cost_t *matrix, wire_t wire, int dim_x, int dim_y) {
 
 void change_wire_route_helper(cost_t* matrix, int x1, int y1, int x2, int y2,
         int dim_x, int dim_y, int increment) {
-    // printf("%d %d %d %d\n", x1, y1, x2, y2);
+    if (x1 == x2 && y1 == y2)
+        return; 
     if (y1 == y2) {
         if (x1 <= x2) {
             for (int i = x1; i < x2; i++) {
@@ -197,8 +197,15 @@ void change_wire_route_helper(cost_t* matrix, int x1, int y1, int x2, int y2,
 
 void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y, 
         int increment) {
-    change_wire_route_helper(matrix, wire.x1, wire.y1, wire.bend_x1, 
-            wire.bend_y1, dim_x, dim_y, increment);
+    
+    if (wire.bend_x1 == -1 && wire.bend_y1 == -1) {
+        change_wire_route_helper(matrix, wire.x1, wire.y1, wire.x2, 
+            wire.y2, dim_x, dim_y, increment);
+        matrix[wire.y2 * dim_x + wire.x2] += increment; 
+        return;
+    }
+    change_wire_route_helper(matrix, wire.x1, wire.y1, wire.bend_x1, wire.bend_y1,
+                                dim_x, dim_y, increment);
     if (wire.bend_y2 >= 0 && wire.bend_x2 >= 0) {
         change_wire_route_helper(matrix, wire.bend_x1, wire.bend_y1,
                         wire.bend_x2, wire.bend_y2, dim_x, dim_y, increment);
@@ -215,27 +222,29 @@ cost_t populate_horizontal(cost_t *matrix, int i, int x1, int y1, int x2, int y2
                         int dim_x, int dim_y) {// i indicates ith horizontal segment
     cost_t row_cost = 0;
     for (int j = x1; j <= x2; j++) {
-        row_cost += 1 + matrix[i*dim_x + j];
+        row_cost += (matrix[i*dim_x + j] > 1);
+        // + matrix[i*dim_x + j];
     }
-    // horizontal[i - y_min] = row_cost;
     if (i < std::min(y1, y2)) {
         for (int j = i+1; j <= std::max(y1, y2); j++) {
-            row_cost += (j <= y1) * (1 + matrix[dim_x * j + x1]);
-            row_cost += (j <= y2) * (1 + matrix[dim_x * j + x2]);
+            row_cost += (j <= y1) * (1 < matrix[dim_x * j + x1]);
+            row_cost += (j <= y2) * (1 < matrix[dim_x * j + x2]);
+            /*row_cost += (j <= y1) * (1 + matrix[dim_x * j + x1]);
+            row_cost += (j <= y2) * (1 + matrix[dim_x * j + x2]);*/
         }// check for double counting
     } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
-            row_cost += (y1 < y2) * (1 + matrix[dim_x * j + x1]);
-            row_cost += (y2 < y1) * (1 + matrix[dim_x * j + x2]);
+            row_cost += (y1 <= y2) * (1 < matrix[dim_x * j + x1]);
+            row_cost += (y2 < y1) * (1 < matrix[dim_x * j + x2]);
         }
         for (int j = i+1; j <= std::max(y1, y2); j++) {
-            row_cost += (y1 > y2) * (1 + matrix[dim_x * j + x1]);
-            row_cost += (y1 < y2) * (1 + matrix[dim_x * j + x2]);
+            row_cost += (y1 >= y2) * (1 < matrix[dim_x * j + x1]);
+            row_cost += (y1 < y2) * (1 < matrix[dim_x * j + x2]);
         }
     } else if (i > std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
-            row_cost += (j >= y1)* (1 + matrix[dim_x * j + x1]);
-            row_cost += (j >= y2)* (1 + matrix[dim_x * j + x2]);
+            row_cost += (j >= y1)* (1 < matrix[dim_x * j + x1]);
+            row_cost += (j >= y2)* (1 < matrix[dim_x * j + x2]);
         }
     }
     return row_cost;
@@ -247,18 +256,18 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
     for (int j = std::min(y1, y2); j <= std::max(y1, y2); j++) {
         col_cost += 1 + matrix[j*dim_x + i];
     }
-        if (i < x1) {
+    if (i < x1) {
         for (int j = i+1; j <= x2; j++) {
             col_cost += (j <= x1)* (1 + matrix[dim_x * y1 + j]);
             col_cost  += (j <= x2)* (1 + matrix[dim_x * y2 + j]);
         }// check for double counting
     } else if (i >= x1 && i <= x2) {
         for (int j = x1; j < i; j++) {
-            col_cost += (y1 < y2) * (1 + matrix[dim_x * y1 + j]);
+            col_cost += (y1 <= y2) * (1 + matrix[dim_x * y1 + j]);
             col_cost += (y2 < y1) * (1 + matrix[dim_x * y2 + j]);
         }
         for (int j = i+1; j <= x2; j++) {
-            col_cost += (y1 > y2) * (1 + matrix[dim_x * y1 + j]);
+            col_cost += (y1 >= y2) * (1 + matrix[dim_x * y1 + j]);
             col_cost += (y1 < y2) * (1 + matrix[dim_x * y2 + j]);
         }
     } else if (i > x2) {
@@ -269,21 +278,6 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
     }
     return col_cost;
 }
-
-/*int tie_breaker(cost_t *agg, ) {
-    if (min_val > horizontal[i - y_min]) {
-    min_val = horizontal[i - y_min];
-    new_bendy1 = i;
-    if (i == wire.y1) // if horizontal segment is align y1
-        new_bendx1 = wire.x2;
-        else // if horizontal segment aligns w/ y2 or != y1
-        new_bendx1 =wire.x1;
-        if (i != wire.y1 && i != wire.y2) {
-            new_bendx2 = wire.x2;
-            new_bendy2 = i;
-        }
-    }  
-}*/
 
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and adds the 
 // wire route to matrix
@@ -305,15 +299,15 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
     int x_min = std::max(0, x1 - (int)(delta/2));
     int y_max = std::min(dim_x-1, (int)(delta/2) + std::max(y1, y2));
     int y_min = std::max(0, std::min(y1, y2) - (int)(delta/2));
-    cost_t curr_cost = 0;
+    // cost_t curr_cost = 0;
     if (wire.cost != -1) { 
         wire.cost = find_wire_cost(matrix, wire, dim_x, dim_y);
         change_wire_route(matrix, wire, dim_x, dim_y, -1);
     }
     printf("removed wire\n");
     print(matrix, dim_y, dim_x);
-    // MAIN IDEA: horizontal keeps track of the path cost of a wire route that has a 
-    // bend at row x
+    // MAIN IDEA: 
+    // horizontal keeps track of the path cost of a wire route that has a bend at row x
     // vertical keeps track of the path cost of a wire route that has a bend at column y
     int *horizontal = (cost_t *)calloc(y_max-y_min+1, sizeof(cost_t));
     int *vertical = (cost_t *)calloc(x_max-x_min+1, sizeof(cost_t));
@@ -327,7 +321,7 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         max_overlap_horiz[i - y_min] = find_max_overlap_h(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
-    printf("horizontal\n");
+    printf("OG horizontal\n");
     print(horizontal, 1, y_max - y_min+1);
     //VERTICAL
     for (int i = x_min; i <= x_max; i++) {
@@ -336,9 +330,9 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         max_overlap_vert[i - x_min] = find_max_overlap_v(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
-    printf("vertical\n");
+    printf("OG vertical\n");
     print(vertical, 1, x_max - x_min + 1);
-    int min_val = wire.cost;
+    // int min_val = wire.cost;
     int max_overlap = matrix_max_overlap(matrix, dim_x * dim_y);
     int new_bendx1 = -1;
     int new_bendy1 = -1;
@@ -353,58 +347,65 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         cost_t temp = max_overlap_vert[i - x_min];
         max_overlap_vert[i - x_min] = std::max(temp, max_overlap);
     }
+    printf("max overlap horiz\n");
+    print(max_overlap_horiz, 1, y_max - y_min+1);
+    printf("max overlap vert\n");
+    print(max_overlap_vert, 1, x_max - x_min+1);
+
     // find optimal wire route
     int min_max = max_overlap_horiz[0];
     int min_agg = horizontal[0];
     int best = 0;
     for (int i = y_min; i <= y_max; i++) {
-        if (max_overlap_horiz[i - y_min] < min_max) {
-           best = i - y_min; 
-        }
-        else if (max_overlap_horiz[i - y_min] == min_max) {
-            // tie_breaker based on aggregate horizontal
-            if (horizontal[best] > horizontal[i - y_min]) {
-                best = i - y_min;
-                new_bendy1 = i;
-                if (i == wire.y1) // if horizontal segment is align y1
+        if (max_overlap_horiz[i - y_min] < min_max || 
+                (max_overlap_horiz[i - y_min] == min_max &&
+                horizontal[best] > horizontal[i - y_min])) {
+            best = i - y_min;
+            min_max = max_overlap_horiz[best];
+            min_agg = horizontal[best];
+            new_bendy1 = i;
+            new_bendx1 = wire.x1;
+                /*if (i == wire.y1) // if horizontal segment is align y1
                     new_bendx1 = wire.x2;
                 else // if horizontal segment aligns w/ y2 or != y1
-                    new_bendx1 =wire.x1;
-                if (i != wire.y1 && i != wire.y2) {
-                    new_bendx2 = wire.x2;
-                    new_bendy2 = i;
-                }
+                    new_bendx1 =wire.x1;*/
+
+            if (i != wire.y1 && i != wire.y2) {
+                new_bendx2 = wire.x2;
+                new_bendy2 = i;
             }
-        }   
-    }
-    for (int i = x_min; i < x_max; i++) {
-        if (max_overlap_vert[i - x_min] < min_max) {
-           best = i - x_min; 
         }
-        else if (max_overlap_vert[i - x_min] == min_max) {
-            // tie_breaker based on aggregate vertical
-            if (horizontal[best] > vertical[i - x_min]) {
-                best = i - x_min;
-                new_bendx1 = i;
-            if (i == wire.x1) // if vertical segment aligns w/ x1
-                new_bendy1 = wire.y2;
-            else // if verticalsegment aligns w/ x2 or != x1
-                new_bendy1 = wire.y1;
+    }   
+    //}
+    for (int i = x_min; i < x_max; i++) {
+        if (max_overlap_vert[i - x_min] < min_max ||
+                (max_overlap_vert[i - x_min] == min_max && 
+                vertical[best] > vertical[i - x_min])) {
+            best = i - x_min;
+            min_max = max_overlap_vert[best];
+            min_agg = vertical[best];
+            new_bendx1 = i;
+            // new line
+            new_bendy1 = wire.y1;
+            printf("%d %d %d\n", min_max, min_agg, new_bendx1); 
+                /*if (i == wire.x1) // if vertical segment aligns w/ x1
+                    new_bendy1 = wire.y2;
+                else // if verticalsegment aligns w/ x2 or != x1
+                    new_bendy1 = wire.y1;
+                */
             if (i != wire.x1 && i != wire.x2) {
                 new_bendx2 = i;
                 new_bendy2 = wire.y2;
             }
         }
     }
-    printf("pre bend: %d\n", wire.cost);
-    if ( wire.cost > min_val) {
-        wire.bend_x1 = new_bendx1;
-        wire.bend_y1 = new_bendy1;
-        wire.bend_x2 = new_bendx2;
-        wire.bend_y2 = new_bendy2;
-        wire.cost = min_val;
-    }
-    printf("bend: %d %d %d\n", wire.cost, wire.bend_x1, wire.bend_y1);
+    wire.bend_x1 = new_bendx1;
+    wire.bend_y1 = new_bendy1;
+    wire.bend_x2 = new_bendx2;
+    wire.bend_y2 = new_bendy2;
+    wire.cost = min_agg;
+    printf("bend: %d %d %d %d %d %d %d\n", wire.cost, wire.bend_x1, wire.bend_y1,
+            wire.bend_x2, wire.bend_y2, min_max, best);
     change_wire_route(matrix, wire, dim_x, dim_y, 1);
     print(matrix, dim_y, dim_x);
     free(horizontal);
