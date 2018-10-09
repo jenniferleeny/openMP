@@ -222,29 +222,29 @@ cost_t populate_horizontal(cost_t *matrix, int i, int x1, int y1, int x2, int y2
                         int dim_x, int dim_y) {// i indicates ith horizontal segment
     cost_t row_cost = 0;
     for (int j = x1; j <= x2; j++) {
-        row_cost += (matrix[i*dim_x + j] > 1);
+        row_cost += (matrix[i*dim_x + j] >= 1);
         // + matrix[i*dim_x + j];
     }
     if (i < std::min(y1, y2)) {
         for (int j = i+1; j <= std::max(y1, y2); j++) {
-            row_cost += (j <= y1) * (1 < matrix[dim_x * j + x1]);
-            row_cost += (j <= y2) * (1 < matrix[dim_x * j + x2]);
+            row_cost += (j <= y1) * (1 <= matrix[dim_x * j + x1]);
+            row_cost += (j <= y2) * (1 <= matrix[dim_x * j + x2]);
             /*row_cost += (j <= y1) * (1 + matrix[dim_x * j + x1]);
             row_cost += (j <= y2) * (1 + matrix[dim_x * j + x2]);*/
         }// check for double counting
     } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
-            row_cost += (y1 <= y2) * (1 < matrix[dim_x * j + x1]);
-            row_cost += (y2 < y1) * (1 < matrix[dim_x * j + x2]);
+            row_cost += (y1 <= y2) * (1 <= matrix[dim_x * j + x1]);
+            row_cost += (y2 < y1) * (1 <= matrix[dim_x * j + x2]);
         }
         for (int j = i+1; j <= std::max(y1, y2); j++) {
-            row_cost += (y1 >= y2) * (1 < matrix[dim_x * j + x1]);
-            row_cost += (y1 < y2) * (1 < matrix[dim_x * j + x2]);
+            row_cost += (y1 >= y2) * (1 <= matrix[dim_x * j + x1]);
+            row_cost += (y1 < y2) * (1 <= matrix[dim_x * j + x2]);
         }
     } else if (i > std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
-            row_cost += (j >= y1)* (1 < matrix[dim_x * j + x1]);
-            row_cost += (j >= y2)* (1 < matrix[dim_x * j + x2]);
+            row_cost += (j >= y1)* (1 <= matrix[dim_x * j + x1]);
+            row_cost += (j >= y2)* (1 <= matrix[dim_x * j + x2]);
         }
     }
     return row_cost;
@@ -254,26 +254,26 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
                         int dim_x, int dim_y) {// i indicates ith vertical segment
     cost_t col_cost = 0;
     for (int j = std::min(y1, y2); j <= std::max(y1, y2); j++) {
-        col_cost += 1 + matrix[j*dim_x + i];
+        col_cost += (1 <= matrix[j*dim_x + i]);
     }
     if (i < x1) {
         for (int j = i+1; j <= x2; j++) {
-            col_cost += (j <= x1)* (1 + matrix[dim_x * y1 + j]);
-            col_cost  += (j <= x2)* (1 + matrix[dim_x * y2 + j]);
+            col_cost += (j <= x1)* (1 <= matrix[dim_x * y1 + j]);
+            col_cost  += (j <= x2)* (1 <= matrix[dim_x * y2 + j]);
         }// check for double counting
     } else if (i >= x1 && i <= x2) {
         for (int j = x1; j < i; j++) {
-            col_cost += (y1 <= y2) * (1 + matrix[dim_x * y1 + j]);
-            col_cost += (y2 < y1) * (1 + matrix[dim_x * y2 + j]);
+            col_cost += (y1 <= y2) * (1 <= matrix[dim_x * y1 + j]);
+            col_cost += (y2 < y1) * (1 <= matrix[dim_x * y2 + j]);
         }
         for (int j = i+1; j <= x2; j++) {
-            col_cost += (y1 >= y2) * (1 + matrix[dim_x * y1 + j]);
-            col_cost += (y1 < y2) * (1 + matrix[dim_x * y2 + j]);
+            col_cost += (y1 >= y2) * (1 <= matrix[dim_x * y1 + j]);
+            col_cost += (y1 < y2) * (1 <= matrix[dim_x * y2 + j]);
         }
     } else if (i > x2) {
         for (int j = x1; j < i; j++) {
-            col_cost += (j >= x1)* (1 + matrix[dim_x * y1 + j]);
-            col_cost += (j >= x2)* (1 + matrix[dim_x * y2 + j]);
+            col_cost += (j >= x1)* (1 <= matrix[dim_x * y1 + j]);
+            col_cost += (j >= x2)* (1 <= matrix[dim_x * y2 + j]);
         }
     }
     return col_cost;
