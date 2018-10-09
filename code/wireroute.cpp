@@ -270,9 +270,20 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
     return col_cost;
 }
 
-int tie_breaker(cost_t *agg, ) {
-
-}
+/*int tie_breaker(cost_t *agg, ) {
+    if (min_val > horizontal[i - y_min]) {
+    min_val = horizontal[i - y_min];
+    new_bendy1 = i;
+    if (i == wire.y1) // if horizontal segment is align y1
+        new_bendx1 = wire.x2;
+        else // if horizontal segment aligns w/ y2 or != y1
+        new_bendx1 =wire.x1;
+        if (i != wire.y1 && i != wire.y2) {
+            new_bendx2 = wire.x2;
+            new_bendy2 = i;
+        }
+    }  
+}*/
 
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and adds the 
 // wire route to matrix
@@ -339,8 +350,8 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         max_overlap_horiz[i - y_min] = std::max(temp, max_overlap);
     }
     for (int i = x_min; i < x_max; i++) {
-        cost_t = max_overlap_vert[i - x_min];
-        max_overlap_vert[i - x_min] = std::max(temp, max_overall);
+        cost_t temp = max_overlap_vert[i - x_min];
+        max_overlap_vert[i - x_min] = std::max(temp, max_overlap);
     }
     // find optimal wire route
     int min_max = max_overlap_horiz[0];
@@ -351,31 +362,30 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
            best = i - y_min; 
         }
         else if (max_overlap_horiz[i - y_min] == min_max) {
-            tie_breaker();
-        }
-        /*if (min_val > horizontal[i - y_min]) {
-            min_val = horizontal[i - y_min];
-            new_bendy1 = i;
-            if (i == wire.y1) // if horizontal segment is align y1
-                new_bendx1 = wire.x2;
-            else // if horizontal segment aligns w/ y2 or != y1
-                new_bendx1 =wire.x1;
-            if (i != wire.y1 && i != wire.y2) {
-                new_bendx2 = wire.x2;
-                new_bendy2 = i;
+            // tie_breaker based on aggregate horizontal
+            if (horizontal[best] > horizontal[i - y_min]) {
+                best = i - y_min;
+                new_bendy1 = i;
+                if (i == wire.y1) // if horizontal segment is align y1
+                    new_bendx1 = wire.x2;
+                else // if horizontal segment aligns w/ y2 or != y1
+                    new_bendx1 =wire.x1;
+                if (i != wire.y1 && i != wire.y2) {
+                    new_bendx2 = wire.x2;
+                    new_bendy2 = i;
+                }
             }
-        }*/   
+        }   
     }
     for (int i = x_min; i < x_max; i++) {
         if (max_overlap_vert[i - x_min] < min_max) {
            best = i - x_min; 
         }
         else if (max_overlap_vert[i - x_min] == min_max) {
-            tie_breaker();
-        }
-/*if (min_val > vertical[i - x_min]) {
-            min_val = vertical[i - x_min];
-            new_bendx1 = i;
+            // tie_breaker based on aggregate vertical
+            if (horizontal[best] > vertical[i - x_min]) {
+                best = i - x_min;
+                new_bendx1 = i;
             if (i == wire.x1) // if vertical segment aligns w/ x1
                 new_bendy1 = wire.y2;
             else // if verticalsegment aligns w/ x2 or != x1
@@ -384,7 +394,7 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
                 new_bendx2 = i;
                 new_bendy2 = wire.y2;
             }
-        }*/
+        }
     }
     printf("pre bend: %d\n", wire.cost);
     if ( wire.cost > min_val) {
