@@ -240,6 +240,8 @@ wire_t find_min_path(int length, int dim_x, int dim_y, wire_t wire, cost_t *matr
         }
         vertical[i] = row_cost;
     }
+    printf("vertical 0\n");
+    print(vertical, 1, dim_x);
     for (int i = 0; i < dim_x; i++) {
         if (i < std::min(x1, x2)) {
             for (int j = i+1; j <= std::max(x1, x2); j++) {
@@ -256,7 +258,7 @@ wire_t find_min_path(int length, int dim_x, int dim_y, wire_t wire, cost_t *matr
                 vertical[i] += (y1 < y2) * (1 + matrix[dim_x * y2 + j]);
             }
         } else if (i > std::max(x1, x2)) {
-            for (int j = std::min(y1, y2); j < i; j++) {
+            for (int j = std::min(x1, x2); j < i; j++) {
                 vertical[i] += (j >= x1)* (1 + matrix[dim_x * y1 + j]);
                 vertical[i] += (j >= x2)* (1 + matrix[dim_x * y2 + j]);
             }
