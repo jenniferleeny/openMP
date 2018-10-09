@@ -152,7 +152,7 @@ void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y,
     matrix[wire.y2 * dim_x + wire.x2] += increment; 
 }
 
-cost_t populate_horizontal(cost_t *matrix, int i, int x1, int, y1, int x2, int y2,
+cost_t populate_horizontal(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
                         int dim_x, int dim_y) {// i indicates ith horizontal segment
     cost_t row_cost = 0;
     for (int j = x1; j <= x2; j++) {
@@ -180,6 +180,35 @@ cost_t populate_horizontal(cost_t *matrix, int i, int x1, int, y1, int x2, int y
         }
     }
     return row_cost;
+}
+
+cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
+                        int dim_x, int dim_y) {// i indicates ith vertical segment
+    cost_t col_cost = 0;
+    for (int j = std::min(y1, y2); j <= std::max(y1, y2); j++) {
+        col_cost += 1 + matrix[j*dim_x + i];
+    }
+        if (i < x1) {
+        for (int j = i+1; j <= x2; j++) {
+            col_cost += (j <= x1)* (1 + matrix[dim_x * y1 + j]);
+            col_cost  += (j <= x2)* (1 + matrix[dim_x * y2 + j]);
+        }// check for double counting
+    } else if (i >= x1 && i <= x2) {
+        for (int j = x1; j < i; j++) {
+            col_cost += (y1 < y2) * (1 + matrix[dim_x * y1 + j]);
+            col_cost += (y2 < y1) * (1 + matrix[dim_x * y2 + j]);
+        }
+        for (int j = i+1; j <= x2; j++) {
+            col_cost += (y1 > y2) * (1 + matrix[dim_x * y1 + j]);
+            col_cost += (y1 < y2) * (1 + matrix[dim_x * y2 + j]);
+        }
+    } else if (i > x2) {
+        for (int j = x1; j < i; j++) {
+            col_cost += (j >= x1)* (1 + matrix[dim_x * y1 + j]);
+            col_cost += (j >= x2)* (1 + matrix[dim_x * y2 + j]);
+        }
+    }
+    return col_cost;
 }
 
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and adds the 
@@ -236,63 +265,14 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
     for (int i = y_min; i <= y_max; i++) {
         horizontal[i - y_min] = populate_horizontal(matrix, i, x1, y1, 
                                                     x2, y2, dim_x, dim_y);
-        /*cost_t row_cost = 0;
-        for (int j = x1; j <= x2; j++) {
-            row_cost += 1 + matrix[i*dim_x + j];
-        }
-        horizontal[i - y_min] = row_cost;
-        if (i < std::min(y1, y2)) {
-            for (int j = i+1; j <= std::max(y1, y2); j++) {
-                horizontal[i - y_min] += (j <= y1) * (1 + matrix[dim_x * j + x1]);
-                horizontal[i - y_min] += (j <= y2) * (1 + matrix[dim_x * j + x2]);
-            }// check for double counting
-        } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
-            for (int j = std::min(y1, y2); j < i; j++) {
-                horizontal[i - y_min] += (y1 < y2) * (1 + matrix[dim_x * j + x1]);
-                horizontal[i - y_min] += (y2 < y1) * (1 + matrix[dim_x * j + x2]);
-            }
-            for (int j = i+1; j <= std::max(y1, y2); j++) {
-                horizontal[i - y_min] += (y1 > y2) * (1 + matrix[dim_x * j + x1]);
-                horizontal[i - y_min] += (y1 < y2) * (1 + matrix[dim_x * j + x2]);
-            }
-        } else if (i > std::max(y1, y2)) {
-            for (int j = std::min(y1, y2); j < i; j++) {
-                horizontal[i- y_min] += (j >= y1)* (1 + matrix[dim_x * j + x1]);
-                horizontal[i- y_min] += (j >= y2)* (1 + matrix[dim_x * j + x2]);
-            }
-        }*/
     }
     printf("horizontal\n");
     print(horizontal, 1, y_max - y_min+1);
     
     //VERTICAL
     for (int i = x_min; i <= x_max; i++) {
-        cost_t row_cost = 0;
-        for (int j = std::min(y1, y2); j <= std::max(y1, y2); j++) {
-            row_cost += 1+matrix[j*dim_x + i];
-        }
-        vertical[i - x_min] = row_cost;
-        
-        if (i < x1) {
-            for (int j = i+1; j <= x2; j++) {
-                vertical[i - x_min] += (j <= x1)* (1 + matrix[dim_x * y1 + j]);
-                vertical[i- x_min] += (j <= x2)* (1 + matrix[dim_x * y2 + j]);
-            }// check for double counting
-        } else if (i >= x1 && i <= x2) {
-            for (int j = x1; j < i; j++) {
-                vertical[i - x_min] += (y1 < y2) * (1 + matrix[dim_x * y1 + j]);
-                vertical[i - x_min] += (y2 < y1) * (1 + matrix[dim_x * y2 + j]);
-            }
-            for (int j = i+1; j <= x2; j++) {
-                vertical[i- x_min] += (y1 > y2) * (1 + matrix[dim_x * y1 + j]);
-                vertical[i- x_min] += (y1 < y2) * (1 + matrix[dim_x * y2 + j]);
-            }
-        } else if (i > x2) {
-            for (int j = x1; j < i; j++) {
-                vertical[i- x_min] += (j >= x1)* (1 + matrix[dim_x * y1 + j]);
-                vertical[i- x_min] += (j >= x2)* (1 + matrix[dim_x * y2 + j]);
-            }
-        }
+        vertical[i - x_min] = populate_vertical(matrix, i, x1, y1,
+                                                x2, y2, dim_x, dim_y);
     }
     printf("vertical\n");
     print(vertical, 1, x_max - x_min + 1);
@@ -518,8 +498,12 @@ int main(int argc, const char *argv[])
 
     for (int i = 0; i < num_of_wires; i++) {
         wire_t wire = wires[i];
-        fprintf(output_routes_file, "%d %d %d %d %d %d %d %d\n", wire.x1, wire.y1,
-             wire.bend_x1,wire.bend_y1, wire.bend_x2, wire.bend_y2, wire.x2, wire.y2);
+        fprintf(output_routes_file, "%d %d ", wire.x1, wire.y1);
+        if (wire.bend_x1 >= 0 && wire.bend_y1 >= 0 &&
+            wire.bend_x1 != wire.x1 && wire.bend_x2 != wire.x2)
+            fprintf(output_routes_file, "%d %d ", wire.bend_x1, wire.bend_y1);
+        fprintf(output_routes_file, "%d %d ", wire.x2, wire.y2);
+        fprintf(output_routes_file, "\n");
     }  
     // WRITE WIRES TO FILE HERE
 

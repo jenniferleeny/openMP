@@ -100,7 +100,7 @@ def validate(args):
         # check value
         for j in range(len(line)):
             if cost_array[i - 1][j] != line[j]:
-                LOG.error('Cost Array: Value mismatch at (%d, %d)'.format(
+                LOG.error('Cost Array: Value mismatch at (%d, %d)' % (
                     i - 1, j))
                 return False
     return True
