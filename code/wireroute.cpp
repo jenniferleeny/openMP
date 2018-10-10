@@ -66,6 +66,7 @@ void print(cost_t *array, int rows, int cols) {
             printf("%d ", array[i*cols + j]);
         printf("\n");
     }
+    printf("\n");
 }
 
 cost_t matrix_max_overlap(cost_t *matrix, int num) {
@@ -279,10 +280,64 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
     return col_cost;
 }
 
+void anneal(wire_t &wire, cost_t *matrix, int dim_x, int dim_y) {
+    // anneal
+    change_wire_route(matrix, wire, dim_x, dim_y, -1);
+  
+    int dx = abs(wire.x2 - wire.x1) + 1;
+    int dy = abs(wire.y2 - wire.y1) + 1;
+    int random_index = rand() % (dx + dy);
+    if (random_index <= dx) {
+        // this will be a 'vertical' path
+        if (random_index == 0) {
+            wire.bend_x1 = wire.x1;
+            wire.bend_y1 = wire.y2;
+            wire.bend_x2 = -1;
+            wire.bend_y2 = -1;
+        }
+        else {
+            int dir = (wire.x2 - wire.x1) / dx;
+            wire.bend_x1 = wire.x1 + dir * (random_index);
+            wire.bend_y1 = wire.y1;
+            wire.bend_x2 = wire.bend_x1 == wire.x2 ? -1 : wire.bend_x1;
+            wire.bend_y2 = wire.bend_x1 == wire.x2 ? -1 : wire.y2;
+        }
+    }
+    else {
+        // this will be a 'horizontal' path
+        random_index -= dx;
+        if (random_index == 0) {
+            wire.bend_x1 = wire.x2;
+            wire.bend_y1 = wire.y1;
+            wire.bend_x2 = -1;
+            wire.bend_y2 = -1;
+        }
+        else {
+            int dir = (wire.y2 - wire.y1) / dy;
+            wire.bend_x1 = wire.x1;
+            wire.bend_y1 = wire.y1 + dir * (random_index + 1);
+            wire.bend_x2 = wire.bend_y1 == wire.y2 ? -1 : wire.x2;
+            wire.bend_y2 = wire.bend_y1 == wire.y2 ? -1 : wire.bend_y1;
+        }
+    }
+  
+    change_wire_route(matrix, wire, dim_x, dim_y, 1);
+  
+}
+
+
+
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and adds the 
 // wire route to matrix
-wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
-                    cost_t *matrix) { 
+void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
+                    cost_t *matrix, double anneal_prob) {
+
+    double prob_sample = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    if (prob_sample < anneal_prob) {
+        anneal(wire, matrix, dim_x, dim_y);
+        return;
+    }
+
     int x1, x2, y1, y2;
     if (wire.x1 <= wire.x2) {
         x1 = wire.x1;
@@ -304,8 +359,8 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         wire.cost = find_wire_cost(matrix, wire, dim_x, dim_y);
         change_wire_route(matrix, wire, dim_x, dim_y, -1);
     }
-    printf("removed wire\n");
-    print(matrix, dim_y, dim_x);
+    // printf("removed wire\n");
+    // print(matrix, dim_y, dim_x);
     // MAIN IDEA: 
     // horizontal keeps track of the path cost of a wire route that has a bend at row x
     // vertical keeps track of the path cost of a wire route that has a bend at column y
@@ -321,8 +376,8 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         max_overlap_horiz[i - y_min] = find_max_overlap_h(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
-    printf("OG horizontal\n");
-    print(horizontal, 1, y_max - y_min+1);
+    // printf("OG horizontal\n");
+    // print(horizontal, 1, y_max - y_min+1);
     //VERTICAL
     for (int i = x_min; i <= x_max; i++) {
         vertical[i - x_min] = populate_vertical(matrix, i, x1, y1,
@@ -330,8 +385,8 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         max_overlap_vert[i - x_min] = find_max_overlap_v(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
-    printf("OG vertical\n");
-    print(vertical, 1, x_max - x_min + 1);
+    // printf("OG vertical\n");
+    // print(vertical, 1, x_max - x_min + 1);
     // int min_val = wire.cost;
     int max_overlap = matrix_max_overlap(matrix, dim_x * dim_y);
     int new_bendx1 = -1;
@@ -347,10 +402,10 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
         cost_t temp = max_overlap_vert[i - x_min];
         max_overlap_vert[i - x_min] = std::max(temp, max_overlap);
     }
-    printf("max overlap horiz\n");
-    print(max_overlap_horiz, 1, y_max - y_min+1);
-    printf("max overlap vert\n");
-    print(max_overlap_vert, 1, x_max - x_min+1);
+    // printf("max overlap horiz\n");
+    // print(max_overlap_horiz, 1, y_max - y_min+1);
+    // printf("max overlap vert\n");
+    // print(max_overlap_vert, 1, x_max - x_min+1);
 
     // find optimal wire route
     int min_max = max_overlap_horiz[0];
@@ -387,7 +442,7 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
             new_bendx1 = i;
             // new line
             new_bendy1 = wire.y1;
-            printf("%d %d %d\n", min_max, min_agg, new_bendx1); 
+            // printf("%d %d %d\n", min_max, min_agg, new_bendx1); 
                 /*if (i == wire.x1) // if vertical segment aligns w/ x1
                     new_bendy1 = wire.y2;
                 else // if verticalsegment aligns w/ x2 or != x1
@@ -404,19 +459,19 @@ wire_t find_min_path(int delta, int dim_x, int dim_y, wire_t wire,
     wire.bend_x2 = new_bendx2;
     wire.bend_y2 = new_bendy2;
     wire.cost = min_agg;
-    printf("bend: %d %d %d %d %d %d %d\n", wire.cost, wire.bend_x1, wire.bend_y1,
-            wire.bend_x2, wire.bend_y2, min_max, best);
+    // printf("bend: %d %d %d %d %d %d %d\n", wire.cost, wire.bend_x1, wire.bend_y1,
+    //        wire.bend_x2, wire.bend_y2, min_max, best);
     change_wire_route(matrix, wire, dim_x, dim_y, 1);
-    print(matrix, dim_y, dim_x);
+    // print(matrix, dim_y, dim_x);
     free(horizontal);
     free(vertical);
-    return wire;
 }
 
 cost_t *wire_routing(cost_t *matrix, wire_t *wires, int dim_x, int dim_y, 
-                    int num_wires, int delta) {
+                    int num_wires, int delta, double anneal_prob) {
     for (int i = 0; i < num_wires; i++) {
-        wires[i] = find_min_path(delta, dim_x, dim_y, wires[i], matrix);
+        find_min_path(delta, dim_x, dim_y, wires[i], matrix, 
+                                 anneal_prob);
         // printf("cost wire %d: %d\n", i, wires[i].cost);
     }
     return matrix;
@@ -530,7 +585,7 @@ int main(int argc, const char *argv[])
     #endif
     {
         for (int i = 0; i < SA_iters; i++) {
-            costs = wire_routing(costs, wires, dim_x, dim_y, num_of_wires, delta); 
+            costs = wire_routing(costs, wires, dim_x, dim_y, num_of_wires, delta, SA_prob); 
         }
         /* Implement the wire routing algorithm here
         * Feel free to structure the algorithm into different functions
