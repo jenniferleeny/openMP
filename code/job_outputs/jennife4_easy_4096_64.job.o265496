@@ -1,0 +1,15 @@
+easy_4096.txt
+Number of threads: 64
+Probability parameter for simulated annealing: 0.100000.
+Number of simulated anneling iterations: 5
+Input file: easy_4096.txt
+Initialization Time: 0.019557.
+Computation Time: 39.056361.
+
+ Performance counter stats for './wireroute -f easy_4096.txt -n 64':
+
+            376863      cache-misses                                                
+
+      41.945905472 seconds time elapsed
+
+mv: target `/home/jennife4/openMP/code/file_outputs' is not a directory

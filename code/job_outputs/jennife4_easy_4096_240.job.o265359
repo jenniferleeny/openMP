@@ -1,0 +1,14 @@
+easy_4096.txt
+Number of threads: 240
+Probability parameter for simulated annealing: 0.100000.
+Number of simulated anneling iterations: 5
+Input file: easy_4096.txt
+Initialization Time: 0.040065.
+Computation Time: 2.257161.
+
+ Performance counter stats for './wireroute -f easy_4096.txt -n 240':
+
+          77174238      cache-misses                                                
+
+       4.335481945 seconds time elapsed
+
