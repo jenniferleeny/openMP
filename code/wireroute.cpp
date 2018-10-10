@@ -290,8 +290,8 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
 
 void anneal(wire_t &wire, cost_t *matrix, int dim_x, int dim_y) {
     // anneal
-    change_wire_route(matrix, wire, dim_x, dim_y, -1);
-    printf("%d\n", __LINE__);
+    if (wire.cost != -1)
+        change_wire_route(matrix, wire, dim_x, dim_y, -1);
     int dx = abs(wire.x2 - wire.x1) + 1;
     int dy = abs(wire.y2 - wire.y1) + 1;
     int random_index = rand() % (dx + dy);
@@ -372,7 +372,6 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
         y_min = y1;
         y_max = y2;
     }
-    printf("%d\n", __LINE__);
     if (wire.cost != -1) { 
         wire.cost = find_wire_cost(matrix, wire, dim_x, dim_y);
         change_wire_route(matrix, wire, dim_x, dim_y, -1);
@@ -399,8 +398,8 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
         max_overlap_horiz[i] = find_max_overlap_h(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
-    printf("OG horizontal\n");
-    print(horizontal, 1, dim_y);
+    //printf("OG horizontal\n");
+    //print(horizontal, 1, dim_y);
     //VERTICAL
     for (int i = x_min; i <= x_max; i++) {
         vertical[i] = populate_vertical(matrix, i, x1, y1,
@@ -408,13 +407,12 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
         max_overlap_vert[i] = find_max_overlap_v(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
-    printf("OG vertical\n");
+    /*printf("OG vertical\n");
     print(vertical, 1, dim_x); 
     printf("max overlap horiz\n");
     print(max_overlap_horiz, 1, dim_y);
     printf("max overlap vert\n");
-    print(max_overlap_vert, 1, dim_x);
-
+    print(max_overlap_vert, 1, dim_x);*/
    
     int max_overlap = matrix_max_overlap(matrix, dim_x * dim_y);
     int new_bendx1 = -1;
@@ -499,13 +497,12 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
     wire.bend_x2 = new_bendx2;
     wire.bend_y2 = new_bendy2;
     wire.cost = min_agg;
-    printf("bend: %d \t%d %d \t%d %d \t%d %d\n", wire.cost, wire.x1, wire.y1,
-            wire.bend_x1, wire.bend_y1, wire.bend_x2, wire.bend_y2);
-    printf("min_max: %d, best: %d\n", min_max, best);
+    // printf("bend: %d \t%d %d \t%d %d \t%d %d\n", wire.cost, wire.x1, wire.y1,
+    //        wire.bend_x1, wire.bend_y1, wire.bend_x2, wire.bend_y2);
+    // printf("min_max: %d, best: %d\n", min_max, best);
     change_wire_route(matrix, wire, dim_x, dim_y, 1);
-    printf("%d %d %d %d %d\n", __LINE__, wire.x1, wire.y1, wire.x2, wire.y2);
-    print(matrix, dim_y, dim_x);
-    printf("%d\n", __LINE__);
+    // printf("%d %d %d %d %d\n", __LINE__, wire.x1, wire.y1, wire.x2, wire.y2);
+    // print(matrix, dim_y, dim_x);
 }
 
 cost_t *wire_routing(cost_t *matrix, wire_t *wires, int dim_x, int dim_y, 
