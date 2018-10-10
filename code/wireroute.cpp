@@ -204,9 +204,9 @@ void change_wire_route_helper(cost_t* matrix, int x1, int y1, int x2, int y2,
 
 void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y, 
         int increment) {
-    printf("wire route\n");
-    printf("%d %d %d %d %d %d %d %d\n", wire.x1, wire.y1, wire.bend_x1,
-            wire.bend_y1, wire.bend_x2, wire.bend_y2, wire.x2, wire.y2);
+    // printf("wire route\n");
+    // printf("%d %d %d %d %d %d %d %d\n", wire.x1, wire.y1, wire.bend_x1,
+     //       wire.bend_y1, wire.bend_x2, wire.bend_y2, wire.x2, wire.y2);
     if (wire.bend_x1 == -1 && wire.bend_y1 == -1) {
         change_wire_route_helper(matrix, wire.x1, wire.y1, wire.x2, 
             wire.y2, dim_x, dim_y, increment);
@@ -232,14 +232,11 @@ cost_t populate_horizontal(cost_t *matrix, int i, int x1, int y1, int x2, int y2
     cost_t row_cost = 0;
     for (int j = x1; j <= x2; j++) {
         row_cost += (matrix[i*dim_x + j] >= 1);
-        // + matrix[i*dim_x + j];
     }
     if (i < std::min(y1, y2)) {
         for (int j = i+1; j <= std::max(y1, y2); j++) {
             row_cost += (j <= y1) * (1 <= matrix[dim_x * j + x1]);
             row_cost += (j <= y2) * (1 <= matrix[dim_x * j + x2]);
-            /*row_cost += (j <= y1) * (1 + matrix[dim_x * j + x1]);
-            row_cost += (j <= y2) * (1 + matrix[dim_x * j + x2]);*/
         }// check for double counting
     } else if (i >= std::min(y1, y2) && i <= std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
@@ -389,9 +386,10 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
     memset(vertical, 0, sizeof(cost_t) * dim_x);
     memset(max_overlap_horiz, 0, sizeof(cost_t) * dim_y);
     memset(max_overlap_vert, 0, sizeof(cost_t) * dim_x);
-
+    int i;
     // HORIZONTAL
-    for (int i = y_min; i <= y_max; i++) {
+#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+    for (i = y_min; i <= y_max; i++) {
         horizontal[i] = populate_horizontal(matrix, i, x1, y1, 
                                                     x2, y2, dim_x, dim_y);
         max_overlap_horiz[i] = find_max_overlap_h(matrix, i, x1, y1, 
@@ -400,7 +398,8 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
     //printf("OG horizontal\n");
     //print(horizontal, 1, dim_y);
     //VERTICAL
-    for (int i = x_min; i <= x_max; i++) {
+#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+   for (i = x_min; i <= x_max; i++) {
         vertical[i] = populate_vertical(matrix, i, x1, y1,
                                                 x2, y2, dim_x, dim_y);
         max_overlap_vert[i] = find_max_overlap_v(matrix, i, x1, y1, 
@@ -507,7 +506,9 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
 cost_t *wire_routing(cost_t *matrix, wire_t *wires, int dim_x, int dim_y, 
                     int num_wires, int delta, double anneal_prob,
                     int *horizontal, int *vertical, int *max_overlap_horiz, int *max_overlap_vert) {
-    for (int i = 0; i < num_wires; i++) {
+    int i;
+#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+    for (i = 0; i < num_wires; i++) {
         find_min_path(delta, dim_x, dim_y, wires[i], matrix, anneal_prob, 
                       horizontal, vertical, max_overlap_horiz, max_overlap_vert);
         // printf("cost wire %d: %d\n", i, wires[i].cost);
