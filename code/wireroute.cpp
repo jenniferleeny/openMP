@@ -328,9 +328,8 @@ void anneal(wire_t &wire, cost_t *matrix, int dim_x, int dim_y) {
             wire.bend_y2 = wire.bend_y1 == wire.y2 ? -1 : wire.bend_y1;
         }
     }
-    printf("%d\n", __LINE__);
+    wire.cost = 2;
     change_wire_route(matrix, wire, dim_x, dim_y, 1);
-    printf("%d\n", __LINE__);
 }
 
 
@@ -624,7 +623,11 @@ int main(int argc, const char *argv[])
    */
     #pragma offload target(mic) \
     inout(wires: length(num_of_wires) INOUT)    \
-    inout(costs: length(dim_x*dim_y) INOUT)
+    inout(costs: length(dim_x*dim_y) INOUT)     \
+    inout(horizontal: length(dim_y) INOUT)      \
+    inout(vertical: length(dim_x) INOUT)        \
+    inout(max_overlap_horiz: length(dim_y) INOUT) \
+    inout(max_overlap_vert: length(dim_x) INOUT)
     #endif
     {
         for (int i = 0; i < SA_iters; i++) {
