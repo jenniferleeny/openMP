@@ -1,16 +1,0 @@
-easy_4096.txt
-offload error: cannot offload to MIC - device is not available
-Number of threads: 240
-Probability parameter for simulated annealing: 0.100000.
-Number of simulated anneling iterations: 5
-Input file: easy_4096.txt
-Initialization Time: 0.039897.
-
- Performance counter stats for './wireroute -f easy_4096.txt -n 240':
-
-             64293      cache-misses                                                
-
-       0.052855788 seconds time elapsed
-
-mv: cannot stat `/home/jennife4/costs_*': No such file or directory
-mv: cannot stat `/home/jennife4/output_*': No such file or directory
