@@ -77,6 +77,16 @@ cost_t matrix_max_overlap(cost_t *matrix, int num) {
     return max_cost;
 }
 
+cost_t matrix_agg_overlap(cost_t *matrix, int num) {
+    cost_t max_cost = 0;
+    for (int i = 0; i < num; i++) {
+        if (matrix[i] > 1)
+            max_cost += matrix[i];
+    }
+    return max_cost;
+}
+
+
 cost_t find_max_overlap_h(cost_t *matrix, int i, int x1, int y1, int x2, int y2, 
                     int dim_x, int dim_y) {
     cost_t max_cost = 0;
@@ -204,7 +214,6 @@ void change_wire_route_helper(cost_t* matrix, int x1, int y1, int x2, int y2,
 
 void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y, 
         int increment) {
-    // printf("wire route\n");
     // printf("%d %d %d %d %d %d %d %d\n", wire.x1, wire.y1, wire.bend_x1,
      //       wire.bend_y1, wire.bend_x2, wire.bend_y2, wire.x2, wire.y2);
     if (wire.bend_x1 == -1 && wire.bend_y1 == -1) {
@@ -254,7 +263,8 @@ void create_vert_horiz(int row, cost_t *matrix, wire_t wire, cost_t *horizontal,
         y_min = y1;
         y_max = y2;
     }
-    // printf("%d %d %d %d\n", x_min, x_max, y_min, y_max);
+    int vert_lock, horiz_lock;
+   // printf("%d %d %d %d\n", x_min, x_max, y_min, y_max);
     int i; 
     for (i = x_min; i <= x_max; i++) {
         // printf("%d %d\n", __LINE__, i);
@@ -264,9 +274,9 @@ void create_vert_horiz(int row, cost_t *matrix, wire_t wire, cost_t *horizontal,
             vertical[i] += (1 <= matrix[dim_x * row + i]);
         }
     } 
-}
+} 
 
-cost_t populate_horizontal(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
+/*cost_t populate_horizontal(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
                         int dim_x, int dim_y) {// i indicates ith horizontal segment
     cost_t row_cost = 0;
     for (int j = x1; j <= x2; j++) {
@@ -322,7 +332,7 @@ cost_t populate_vertical(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
         }
     }
     return col_cost;
-}
+}*/
 
 void anneal(wire_t &wire, cost_t *matrix, int dim_x, int dim_y) {
     // anneal
@@ -426,9 +436,9 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
     // HORIZONTAL
 #pragma omp parallel for default(shared) private(i) schedule(dynamic)
     for (i = y_min; i <= y_max; i++) {
-        horizontal[i] = populate_horizontal(matrix, i, x1, y1, 
-                                                    x2, y2, dim_x, dim_y);
-        // create_vert_horiz(i, matrix, wire, horizontal, vertical, dim_x, dim_y, delta);
+        //horizontal[i] = populate_horizontal(matrix, i, x1, y1, 
+        //                                            x2, y2, dim_x, dim_y);
+        create_vert_horiz(i, matrix, wire, horizontal, vertical, dim_x, dim_y, delta);
         max_overlap_horiz[i] = find_max_overlap_h(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
@@ -438,8 +448,8 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
 
 #pragma omp parallel for default(shared) private(i) schedule(dynamic)
    for (i = x_min; i <= x_max; i++) {
-        vertical[i] = populate_vertical(matrix, i, x1, y1,
-                                                x2, y2, dim_x, dim_y);
+        //vertical[i] = populate_vertical(matrix, i, x1, y1,
+          //                                      x2, y2, dim_x, dim_y);
         max_overlap_vert[i] = find_max_overlap_v(matrix, i, x1, y1, 
                                                         x2, y2, dim_x, dim_y);
     }
@@ -672,14 +682,21 @@ int main(int argc, const char *argv[])
             costs = wire_routing(costs, wires, dim_x, dim_y, num_of_wires, delta, SA_prob,
                         horizontal, vertical, max_overlap_horiz, max_overlap_vert); 
         }
-        /* Implement the wire routing algorithm here
+       
+         /* Implement the wire routing algorithm here
         * Feel free to structure the algorithm into different functions
         * Don't use global variables.
         * Use OpenMP to parallelize the algorithm. 
          * You should really implement as much of this (if not all of it) in
         * helper functions. */
     }
+    cost_t max_overlap = matrix_max_overlap(costs, dim_x * dim_y);
+    printf("Max overlap: %d\n", max_overlap);
+    
 
+    cost_t agg_overlap = matrix_agg_overlap(costs, dim_x * dim_y);
+    printf("Max overlap: %d\n", agg_overlap);
+    
     compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
     printf("Computation Time: %lf.\n", compute_time);
 
