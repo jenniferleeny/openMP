@@ -665,11 +665,11 @@ int main(int argc, const char *argv[])
     int *max_overlap_horiz = (cost_t *)calloc(dim_y, sizeof(cost_t));
     int *max_overlap_vert = (cost_t *)calloc(dim_x, sizeof(cost_t));
     int lock_length = 2 * dim_x + 2 * dim_y;
-    /* omp_lock_t *locks = (omp_lock_t *)malloc(lock_length * 
+    omp_lock_t *locks = (omp_lock_t *)malloc(lock_length * 
                                       sizeof(omp_lock_t));
     for (int i = 0; i < 2 * dim_y + 2 * dim_x; i++) {
         omp_init_lock(&locks[i]);
-    } */
+    }
 
     error = 0;
 
@@ -690,7 +690,8 @@ int main(int argc, const char *argv[])
     inout(horizontal: length(dim_y) INOUT)      \
     inout(vertical: length(dim_x) INOUT)        \
     inout(max_overlap_horiz: length(dim_y) INOUT) \
-    inout(max_overlap_vert: length(dim_x) INOUT)
+    inout(max_overlap_vert: length(dim_x) INOUT) \
+    inout(locks: length(lock_length) INOUT)
     #endif
     {
         printf("%d\n", __LINE__);
@@ -700,7 +701,7 @@ int main(int argc, const char *argv[])
             costs = wire_routing(costs, wires, dim_x, dim_y, num_of_wires, 
                                  delta, SA_prob,
                                  horizontal, vertical, max_overlap_horiz, 
-                                 max_overlap_vert, NULL);
+                                 max_overlap_vert, locks);
         }
        
          /* Implement the wire routing algorithm here
