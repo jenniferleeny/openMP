@@ -477,7 +477,8 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
                    int *horizontal, int *vertical, int *max_overlap_horiz, 
                    int *max_overlap_vert) {
     
-    double prob_sample = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    double prob_sample = static_cast<double>(rand()) / 
+                         static_cast<double>(RAND_MAX);
     if (prob_sample < anneal_prob) {
         anneal(wire, matrix, dim_x, dim_y);
         return;
@@ -515,9 +516,8 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
     memset(max_overlap_horiz, 0, sizeof(cost_t) * dim_y);
     memset(max_overlap_vert, 0, sizeof(cost_t) * dim_x);
 
-    int i;
-#pragma omp parallel for default(shared) private(i) schedule(static)
-    for (i = y_min; i <= y_max; i++) {
+#pragma omp parallel for schedule(static)
+    for (int i = y_min; i <= y_max; i++) {
         populate_vert_horiz(i, matrix, wire, horizontal, vertical, 
                 max_overlap_horiz, max_overlap_vert, dim_x, dim_y, 
                 delta);
