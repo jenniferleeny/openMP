@@ -1,6 +1,6 @@
 /**
  * Parallel VLSI Wire Routing via OpenMP
- * Name 1(andrew_id 1), Name 2(andrew_id 2)
+ * Eric Clinch (eclinch), Jennifer Lee (jennife4)
  */
 
 #include "wireroute.h"
@@ -87,7 +87,7 @@ cost_t matrix_agg_overlap(cost_t *matrix, int num) {
 }
 
 
-cost_t find_max_overlap_h(cost_t *matrix, int i, int x1, int y1, int x2, int y2, 
+cost_t find_max_overlap_h(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
                     int dim_x, int dim_y) {
     cost_t max_cost = 0;
     for (int j = x1; j <= x2; j++) {
@@ -109,8 +109,10 @@ cost_t find_max_overlap_h(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
         }
     } else if (i > std::max(y1, y2)) {
         for (int j = std::min(y1, y2); j < i; j++) {
-            max_cost = std::max(max_cost, (j >= y1)* (1 + matrix[dim_x * j + x1]));
-            max_cost = std::max(max_cost, (j >= y2)* (1 + matrix[dim_x * j + x2]));
+            max_cost = std::max(max_cost, 
+                            (j >= y1) * (1 + matrix[dim_x * j + x1]));
+            max_cost = std::max(max_cost, 
+                            (j >= y2) * (1 + matrix[dim_x * j + x2]));
         }
     }
     return max_cost;
@@ -124,22 +126,30 @@ cost_t find_max_overlap_v(cost_t *matrix, int i, int x1, int y1, int x2, int y2,
     }
         if (i < x1) {
         for (int j = i+1; j <= x2; j++) {
-            max_cost = std::max(max_cost, (j <= x1)* (1 + matrix[dim_x * y1 + j]));
-            max_cost = std::max(max_cost, (j <= x2)* (1 + matrix[dim_x * y2 + j]));
+            max_cost = std::max(max_cost, 
+                    (j <= x1) * (1 + matrix[dim_x * y1 + j]));
+            max_cost = std::max(max_cost, 
+                    (j <= x2) * (1 + matrix[dim_x * y2 + j]));
         }// check for double counting
     } else if (i >= x1 && i <= x2) {
         for (int j = x1; j < i; j++) {
-            max_cost = std::max(max_cost, (y1 <= y2) * (1 + matrix[dim_x * y1 + j]));
-            max_cost = std::max(max_cost, (y2 < y1) * (1 + matrix[dim_x * y2 + j]));
+            max_cost = std::max(max_cost, 
+                    (y1 <= y2) * (1 + matrix[dim_x * y1 + j]));
+            max_cost = std::max(max_cost, 
+                    (y2 < y1) * (1 + matrix[dim_x * y2 + j]));
         }
         for (int j = i+1; j <= x2; j++) {
-            max_cost = std::max(max_cost, (y1 >= y2) * (1 + matrix[dim_x * y1 + j]));
-            max_cost = std::max(max_cost, (y1 < y2) * (1 + matrix[dim_x * y2 + j]));
+            max_cost = std::max(max_cost, 
+                    (y1 >= y2) * (1 + matrix[dim_x * y1 + j]));
+            max_cost = std::max(max_cost, 
+                    (y1 < y2) * (1 + matrix[dim_x * y2 + j]));
         }
     } else if (i > x2) {
         for (int j = x1; j < i; j++) {
-            max_cost = std::max(max_cost, (j >= x1)* (1 + matrix[dim_x * y1 + j]));
-            max_cost = std::max(max_cost, (j >= x2)* (1 + matrix[dim_x * y2 + j]));
+            max_cost = std::max(max_cost, 
+                    (j >= x1) * (1 + matrix[dim_x * y1 + j]));
+            max_cost = std::max(max_cost, 
+                    (j >= x2) * (1 + matrix[dim_x * y2 + j]));
         }
     }
     return max_cost;
@@ -212,7 +222,8 @@ void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y,
         matrix[wire.y2 * dim_x + wire.x2] += increment; 
         return;
     }
-    change_wire_route_helper(matrix, wire.x1, wire.y1, wire.bend_x1, wire.bend_y1,
+    change_wire_route_helper(matrix, wire.x1, wire.y1, 
+                             wire.bend_x1, wire.bend_y1,
                                 dim_x, dim_y, increment);
     if (wire.bend_y2 >= 0 && wire.bend_x2 >= 0) {
         change_wire_route_helper(matrix, wire.bend_x1, wire.bend_y1,
@@ -224,36 +235,6 @@ void change_wire_route(cost_t *matrix, wire_t wire, int dim_x, int dim_y,
                         wire.x2, wire.y2, dim_x, dim_y, increment);
     }
     matrix[wire.y2 * dim_x + wire.x2] += increment; 
-}
-
-void increment_horizontal(int i, cost_t *horizontal, omp_lock_t *locks,
-                          int dim_x, int dim_y) {
-    omp_set_lock(&locks[i]);
-    horizontal[i] += 1;
-    omp_unset_lock(&locks[i]);
-}
-
-void increment_vertical(int i, cost_t *vertical, omp_lock_t *locks,
-                          int dim_x, int dim_y) {
-    omp_set_lock(&locks[i + dim_y]);
-    vertical[i] += 1;
-    omp_unset_lock(&locks[i + dim_y]);
-}
-
-void set_horizontal_max(int i, cost_t *max_overlap_horiz, cost_t cost, 
-        omp_lock_t *locks, int dim_x, int dim_y) {
-    omp_set_lock(&locks[i + dim_y + dim_x]);
-    cost_t prev_max = max_overlap_horiz[i];
-    if (prev_max < cost) max_overlap_horiz[i] = cost;
-    omp_unset_lock(&locks[i + dim_y + dim_x]);
-}
-
-void set_vertical_max(int i, cost_t *max_overlap_vert, cost_t cost, 
-        omp_lock_t *locks, int dim_x, int dim_y) {
-    omp_set_lock(&locks[i + 2 * dim_y + dim_x]);
-    cost_t prev_max = max_overlap_vert[i];
-    if (prev_max < cost) max_overlap_vert[i] = cost;
-    omp_unset_lock(&locks[i + 2 * dim_y + dim_x]);
 }
 
 void add_cell_cost(int x, int y, cost_t *matrix, wire_t &wire, 
@@ -269,10 +250,10 @@ void add_cell_cost(int x, int y, cost_t *matrix, wire_t &wire,
         int y_end = std::max(wire.y1, wire.y2);
         if (y_start <= y && y <= y_end) {
             for (int i = y_start; i < y_end; i++) {
-                horizontal[i - y_min] += 1;
+                horizontal[i] += 1;
 
-                cost_t prev_max = max_overlap_horiz[i - y_min];
-                if (prev_max < cost) max_overlap_horiz[i - y_min] = cost;
+                cost_t prev_max = max_overlap_horiz[i];
+                if (prev_max < cost) max_overlap_horiz[i] = cost;
             }
         }
     }
@@ -280,27 +261,28 @@ void add_cell_cost(int x, int y, cost_t *matrix, wire_t &wire,
         int dir = wire.y1 < wire.y2 ? 1 : -1;
         int y_start = wire.y1 < wire.y2 ? y_min : y_max;
         for (int i = y_start; i != y + dir; i += dir) {
-            horizontal[i - y_min] += 1;
+            horizontal[i] += 1;
             
-            cost_t prev_max = max_overlap_horiz[i - y_min];
-            if (prev_max < cost) max_overlap_horiz[i - y_min] = cost;
+            cost_t prev_max = max_overlap_horiz[i];
+            if (prev_max < cost) max_overlap_horiz[i] = cost;
         }
     }
     else if (x == wire.x2) {
         int dir = wire.y1 < wire.y2 ? 1 : -1;
         int y_end = wire.y1 < wire.y2 ? y_max : y_min;
         for (int i = y; i != y_end + dir; i += dir) {
-            horizontal[i - y_min] += 1;
+            horizontal[i] += 1;
 
-            cost_t prev_max = max_overlap_horiz[i - y_min];
-            if (prev_max < cost) max_overlap_horiz[i - y_min] = cost;
+            cost_t prev_max = max_overlap_horiz[i];
+            if (prev_max < cost) max_overlap_horiz[i] = cost;
         } 
     }
-    else if (std::min(wire.x1, wire.x2) <= x && x <= std::max(wire.x1, wire.x2)) {
-        horizontal[y - y_min] += 1;
+    else if (std::min(wire.x1, wire.x2) <= x && 
+             x <= std::max(wire.x1, wire.x2)) {
+        horizontal[y] += 1;
 
-        cost_t prev_max = max_overlap_horiz[y - y_min];
-        if (prev_max < cost) max_overlap_horiz[y - y_min] = cost;
+        cost_t prev_max = max_overlap_horiz[y];
+        if (prev_max < cost) max_overlap_horiz[y] = cost;
     }
 
     // handle y coordinate
@@ -309,10 +291,10 @@ void add_cell_cost(int x, int y, cost_t *matrix, wire_t &wire,
         int x_end = std::max(wire.x1, wire.x2);
         if (x_start <= x && x <= x_end) {
             for (int i = x_start; i < x_end; i++) {
-                vertical[i - x_min] += 1;
+                vertical[i] += 1;
 
-                cost_t prev_max = max_overlap_vert[i - x_min];
-                if (prev_max < cost) max_overlap_vert[i - x_min] = cost;
+                cost_t prev_max = max_overlap_vert[i];
+                if (prev_max < cost) max_overlap_vert[i] = cost;
             }
         }
     }
@@ -320,33 +302,34 @@ void add_cell_cost(int x, int y, cost_t *matrix, wire_t &wire,
         int dir = wire.x1 < wire.x2 ? 1 : -1;
         int x_start = wire.x1 < wire.x2 ? x_min : x_max;
         for (int i = x_start; i != x + dir; i += dir) {
-            vertical[i - x_min] += 1;
+            vertical[i] += 1;
 
-            cost_t prev_max = max_overlap_vert[i - x_min];
-            if (prev_max < cost) max_overlap_vert[i - x_min] = cost;
+            cost_t prev_max = max_overlap_vert[i];
+            if (prev_max < cost) max_overlap_vert[i] = cost;
         }
     }
     else if (y == wire.y2) {
         int dir = wire.x1 < wire.x2 ? 1 : -1;
         int x_end = wire.x1 < wire.x2 ? x_max : x_min;
         for (int i = x; i != x_end + dir; i += dir) {
-            vertical[i - x_min] += 1;
+            vertical[i] += 1;
 
-            cost_t prev_max = max_overlap_vert[i - x_min];
-            if (prev_max < cost) max_overlap_vert[i - x_min] = cost;
+            cost_t prev_max = max_overlap_vert[i];
+            if (prev_max < cost) max_overlap_vert[i] = cost;
         }
     }
-    else if (std::min(wire.y1, wire.y2) <= y && y <= std::max(wire.y1, wire.y2)) {
-        vertical[x - x_min] += 1;
+    else if (std::min(wire.y1, wire.y2) <= y && 
+             y <= std::max(wire.y1, wire.y2)) {
+        vertical[x] += 1;
         
-        cost_t prev_max = max_overlap_vert[x - x_min];
-        if (prev_max < cost) max_overlap_vert[x - x_min] = cost;
+        cost_t prev_max = max_overlap_vert[x];
+        if (prev_max < cost) max_overlap_vert[x] = cost;
     }
 }
 
 void populate_vert_horiz(int row, cost_t *matrix, wire_t &wire, 
-        cost_t *horizontal, cost_t *vertical, cost_t *max_overlap_horiz, 
-        cost_t *max_overlap_vert, int dim_x, int dim_y, int delta) {
+        cost_t *path_costs, cost_t *temp_path_costs, 
+        int dim_x, int dim_y, int delta) {
     int x1, x2, y1, y2;
     if (wire.x1 <= wire.x2) {
         x1 = wire.x1;
@@ -364,12 +347,17 @@ void populate_vert_horiz(int row, cost_t *matrix, wire_t &wire,
     int y_max = std::min(dim_y-1, (int)(delta/2) + std::max(y1, y2));
     int y_min = std::max(0, std::min(y1, y2) - (int)(delta/2));
 
-    cost_t *horizontal_temp = (cost_t*)calloc(y_max - y_min + 1, sizeof(cost_t));
-    cost_t *vertical_temp = (cost_t*)calloc(x_max - x_min + 1, sizeof(cost_t));
-    cost_t *max_overlap_horiz_temp = (cost_t*)calloc(y_max - y_min + 1, 
-                                      sizeof(cost_t));
-    cost_t *max_overlap_vert_temp = (cost_t*)calloc(x_max - x_min + 1, 
-                                     sizeof(cost_t));
+    cost_t *horizontal = path_costs;
+    cost_t *vertical = path_costs + dim_y;
+    cost_t *max_overlap_horiz = path_costs + dim_y + dim_x;
+    cost_t *max_overlap_vert = path_costs + 2 * dim_y + dim_x;
+
+    memset(temp_path_costs, 0, sizeof(cost_t) * (2 * dim_y + 2 * dim_x));
+
+    cost_t *horizontal_temp = temp_path_costs;
+    cost_t *vertical_temp = temp_path_costs + dim_y;
+    cost_t *max_overlap_horiz_temp = temp_path_costs + dim_y + dim_x;
+    cost_t *max_overlap_vert_temp = temp_path_costs + 2 * dim_y + dim_x;
 
     if (wire.y1 == wire.y2) {
         x_min = x1;
@@ -389,12 +377,12 @@ void populate_vert_horiz(int row, cost_t *matrix, wire_t &wire,
     }
 
     for (int i = y_min; i <= y_max; i++) {
-        int temp = horizontal_temp[i - y_min];
+        int temp = horizontal_temp[i];
         if (temp > 0) {
 #pragma omp atomic
             horizontal[i] += temp;
 
-            temp = max_overlap_horiz_temp[i - y_min];
+            temp = max_overlap_horiz_temp[i];
             cost_t prev_max = max_overlap_horiz[i];
             if (prev_max < temp) {
 #pragma omp atomic write
@@ -403,25 +391,19 @@ void populate_vert_horiz(int row, cost_t *matrix, wire_t &wire,
         }
     }
     for (int i = x_min; i <= x_max; i++) {
-        int temp = vertical_temp[i - x_min];
+        int temp = vertical_temp[i];
         if (temp > 0) {
 #pragma omp atomic
             vertical[i] += temp;
 
-            temp = max_overlap_vert_temp[i - x_min];
+            temp = max_overlap_vert_temp[i];
             cost_t prev_max = max_overlap_vert[i];
             if (prev_max < temp) {
 #pragma omp atomic write
                 max_overlap_vert[i] = temp;
             }
         }
-
     }
-
-    free(horizontal_temp);
-    free(vertical_temp);
-    free(max_overlap_horiz_temp);
-    free(max_overlap_vert_temp);
 } 
 
 void anneal(wire_t &wire, cost_t *matrix, int dim_x, int dim_y) {
@@ -473,9 +455,8 @@ void anneal(wire_t &wire, cost_t *matrix, int dim_x, int dim_y) {
 // find_mind_path_cost: takes in (wire.x1, wire.y1) to (wire.x2, wire.y2) and 
 // adds the wire route to matrix
 void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire, 
-                   cost_t *matrix, double anneal_prob,
-                   int *horizontal, int *vertical, int *max_overlap_horiz, 
-                   int *max_overlap_vert) {
+                   cost_t *matrix, double anneal_prob, cost_t *path_costs, 
+                   cost_t *temp_path_costs) {
     
     double prob_sample = static_cast<double>(rand()) / 
                          static_cast<double>(RAND_MAX);
@@ -511,16 +492,22 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
         change_wire_route(matrix, wire, dim_x, dim_y, -1);
     }
 
-    memset(horizontal, 0, sizeof(cost_t) * dim_y);
-    memset(vertical, 0, sizeof(cost_t) * dim_x);
-    memset(max_overlap_horiz, 0, sizeof(cost_t) * dim_y);
-    memset(max_overlap_vert, 0, sizeof(cost_t) * dim_x);
+    memset(path_costs, 0, sizeof(cost_t) * (2 * dim_y + 2 * dim_x));
+
+    cost_t *horizontal = path_costs;
+    cost_t *vertical = path_costs + dim_y;
+    cost_t *max_overlap_horiz = path_costs + dim_y + dim_x;
+    cost_t *max_overlap_vert = path_costs + 2 * dim_y + dim_x;
+
+    int path_costs_len = 2 * dim_y + 2 * dim_x;
 
 #pragma omp parallel for schedule(static)
     for (int i = y_min; i <= y_max; i++) {
-        populate_vert_horiz(i, matrix, wire, horizontal, vertical, 
-                max_overlap_horiz, max_overlap_vert, dim_x, dim_y, 
-                delta);
+        int thread_num = omp_get_thread_num();
+        cost_t *thread_temp_path_costs = temp_path_costs + 
+                                thread_num * path_costs_len;
+        populate_vert_horiz(i, matrix, wire, path_costs, 
+                            thread_temp_path_costs, dim_x, dim_y, delta);
     }
   
     int new_bendx1 = -1;
@@ -598,13 +585,10 @@ void find_min_path(int delta, int dim_x, int dim_y, wire_t &wire,
 
 cost_t *wire_routing(cost_t *matrix, wire_t *wires, int dim_x, int dim_y, 
                     int num_wires, int delta, double anneal_prob,
-                    int *horizontal, int *vertical, int *max_overlap_horiz, 
-                    int *max_overlap_vert) {
-    int i;
-    for (i = 0; i < num_wires; i++) {
+                    cost_t *path_costs, cost_t *temp_path_costs) {
+    for (int i = 0; i < num_wires; i++) {
         find_min_path(delta, dim_x, dim_y, wires[i], matrix, anneal_prob, 
-                      horizontal, vertical, max_overlap_horiz, 
-                      max_overlap_vert);
+                      path_costs, temp_path_costs);
     }
     return matrix;
 } 
@@ -639,6 +623,8 @@ int main(int argc, const char *argv[])
         show_help(argv[0]);
         return 1;
     }
+
+    omp_set_num_threads(num_of_threads);
   
     printf("Number of threads: %d\n", num_of_threads);
     printf("Probability parameter for simulated annealing: %lf.\n", SA_prob);
@@ -698,7 +684,12 @@ int main(int argc, const char *argv[])
 	}
 
     int path_costs_length = 2 * dim_y + 2 * dim_x;
-    int *path_costs = (cost_t *)malloc(path_costs_length * sizeof(cost_t));
+    cost_t *path_costs = (cost_t*)malloc(path_costs_length * sizeof(cost_t));
+    
+    int temp_costs_length = path_costs_length * num_of_threads;
+    cost_t *temp_path_costs = (cost_t*)malloc(temp_costs_length * sizeof(cost_t));
+
+    num_of_threads = std::min(num_of_threads, 128);
 
     /* Initialize additional data structures needed in the algorithm 
     * here if you feel it's needed. */
@@ -718,34 +709,30 @@ int main(int argc, const char *argv[])
     #pragma offload target(mic) \
     inout(wires: length(num_of_wires) INOUT)    \
     inout(costs: length(dim_x*dim_y) INOUT)     \
-    inout(path_costs: length(path_costs_length) INOUT)
+    inout(path_costs: length(path_costs_length) INOUT)  \
+    inout(temp_path_costs: length(temp_costs_length) INOUT)
     #endif
-
     {
-        cost_t *horizontal = path_costs;
-        path_costs += dim_y;
-        cost_t *vertical = path_costs;
-        path_costs += dim_x;
-        cost_t *max_overlap_horiz = path_costs;
-        path_costs += dim_y;
-        cost_t *max_overlap_vert = path_costs;
+        omp_set_num_threads(num_of_threads);
 
         for (int i = 0; i < SA_iters; i++) {
             wire_routing(costs, wires, dim_x, dim_y, num_of_wires, 
-                                 delta, SA_prob,
-                                 horizontal, vertical, max_overlap_horiz, 
-                                 max_overlap_vert);
+                         delta, SA_prob, path_costs, temp_path_costs);
         }       
     }
+    
+    compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
+    printf("Computation Time: %lf.\n", compute_time);
+
     cost_t max_overlap = matrix_max_overlap(costs, dim_x * dim_y);
     printf("Max overlap: %d\n", max_overlap);
     
 
     cost_t agg_overlap = matrix_agg_overlap(costs, dim_x * dim_y);
     printf("Max overlap: %d\n", agg_overlap);
-    
-    compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
-    printf("Computation Time: %lf.\n", compute_time);
+
+    free(path_costs);
+    free(temp_path_costs);
 
     /* OUTPUT YOUR RESULTS TO FILES HERE 
     * When you're ready to output your data to files, uncommment this chunk of
@@ -800,6 +787,5 @@ int main(int argc, const char *argv[])
     // WRITE WIRES TO FILE HERE
 
     fclose(output_routes_file);
-    // free(path_costs);
     return 0;
 }
